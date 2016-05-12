@@ -1,12 +1,23 @@
-from .networking import KademliaUDPServer, KademliaUDPClient
 from .node import Node
+from .networking import KademliaUDPServer, KademliaUDPClient
 
 
 class Kademlia(object):
-    def __init__(self, host, port, k):
-        self.node = Node(host, port, k)
-        self.server = KademliaUPDServer(port)
+    def __init__(self, host, port, register_to=None, k=20):
         self.data = {}
+        self.node = Node(host, port, k)
+
+        self.receiver = KademliaUDPServer(self.node)
+        self.sender = KademliaUDPClient(self.node)
+
+        self.receiver.start()
+        self.sender.start()
+
+        if register_to:
+            self.register(register_to)
+
+    def register(self, gateway):
+        pass
 
     def __getitem__(self, key):
         key = Node.hash_it(key)
@@ -22,4 +33,4 @@ class Kademlia(object):
             self.data[key] = value
 
         for node in neighbors:
-            node.store(key, value, socket=self.server.socket, node=self.node)
+            self.sender('store', to=node)(key, value)
