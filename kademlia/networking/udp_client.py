@@ -5,5 +5,5 @@ class KademliaUDPClient(BaseClient):
     def start(self):
         print("Staring sever")
 
-    def __call__(self):
+    def send(self):
         return lambda x,y: print(x,y)

@@ -21,8 +21,10 @@ class Kademlia(object):
 
     def __getitem__(self, key):
         key = Node.hash_it(key)
+
         if key in self.data:
             return data[key]
+
         return self.find_value(key)
 
     def __setitem__(self, key, value):
