@@ -8,21 +8,38 @@ class Base(metaclass=ABCMeta):
         self.node = node
 
     @abstractmethod
-    def start(self):
-        raise NotImplemented("start method needs to be implemented on BaseClient")
+    def start(self, *args, **kwargs):
+        pass
 
 
 class BaseClient(Base):
+
     @abstractmethod
-    def send(self):
-        raise NotImplemented("send method needs to be implemented on BaseClient")
+    def send(self, node, data):
+        pass
+
+    def pong(self, node):
+        data = {
+            "job_type": "pong",
+            "data": "",
+            "sender": self.node.id
+        }
+        self.send(node, data)
+
+    def ping(self, node):
+        data = {
+            "job_type": "ping",
+            "data": "",
+            "sender": self.node.id
+        }
+        self.send(node, data)
 
 
 class BaseServer(Base):
 
     @abstractmethod
     def receive(self):
-        raise NotImplemented("receive method needs to be implemented on BaseClient")
+        pass
 
     def handle_receive(self, job):
         """
@@ -30,6 +47,7 @@ class BaseServer(Base):
         """
 
         if job["type"] in self.__dict__ and callable(self.__dict__[job["type"]]):
+            self.node.receive_jobs.append(job)
             return self.__dict__[job["job_type"]](job["data"])
 
         raise ValueError("Invalid job type %s. Not in %s" %
@@ -37,16 +55,20 @@ class BaseServer(Base):
 
     @abstractmethod
     def store(self, job):
-        raise NotImplemented("store method needs to be implemented on BaseServer")
+        pass
 
     @abstractmethod
     def find_node(self, job):
-        raise NotImplemented("find_node method needs to be implemented on BaseServer")
+        pass
 
     @abstractmethod
     def find_value(self, job):
-        raise NotImplemented("find_value method needs to be implemented on BaseServer")
+        pass
 
-    @abstractmethod
     def ping(self, job):
-        raise NotImplemented("ping method needs to be implemented on BaseServer")
+        """
+            On ping method, the client should respond with a pong message.
+        """
+
+        node = Node(job["host"], job["port"], job["node_id"])
+        self.node.client.pong(node)
