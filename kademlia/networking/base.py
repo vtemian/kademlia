@@ -1,38 +1,52 @@
 from abc import ABCMeta, abstractmethod
 
+from kademlia.node import Node
+
 VALID_JOBS_TYPES = ["store", "find_node", "find_value", "ping"]
 
 
 class Base(metaclass=ABCMeta):
     def __init__(self, node):
-        self.node = node
+        self.kademlia = node
 
     @abstractmethod
     def start(self, *args, **kwargs):
         pass
 
-
 class BaseClient(Base):
+    def __init__(self, *args, **kwargs):
+        super(BaseClient, self).__init__(*args, **kwargs)
+
+        self.start()
 
     @abstractmethod
     def send(self, node, data):
         pass
 
-    def pong(self, node):
+    def pong(self, node, loop=None):
         data = {
-            "job_type": "pong",
+            "type": "pong",
             "data": "",
-            "sender": self.node.id
-        }
-        self.send(node, data)
+            "sender": {
+                "id": self.kademlia.node.id,
+                "port": self.kademlia.node.id,
+                "host": self.kademlia.node.id,
+            }
 
-    def ping(self, node):
-        data = {
-            "job_type": "ping",
-            "data": "",
-            "sender": self.node.id
         }
-        self.send(node, data)
+        self.send(node, data, loop)
+
+    def ping(self, node, loop=None):
+        data = {
+            "type": "ping",
+            "data": "",
+            "sender": {
+                "id": self.kademlia.node.id,
+                "port": self.kademlia.node.id,
+                "host": self.kademlia.node.id,
+            }
+        }
+        self.send(node, data, loop)
 
 
 class BaseServer(Base):
@@ -46,29 +60,31 @@ class BaseServer(Base):
             Handle different types of jobs (messsages comming from other nodes).
         """
 
-        if job["type"] in self.__dict__ and callable(self.__dict__[job["type"]]):
-            self.node.receive_jobs.append(job)
-            return self.__dict__[job["job_type"]](job["data"])
+        on_job = getattr(self, "on_%s" % job["type"], None)
+        if on_job is not None and callable(on_job):
+            self.kademlia.received_jobs.append(job)
+            return on_job(job)
 
         raise ValueError("Invalid job type %s. Not in %s" %
                          (job["type"], ",".join(VALID_JOBS_TYPES)))
 
     @abstractmethod
-    def store(self, job):
+    def on_store(self, job):
         pass
 
     @abstractmethod
-    def find_node(self, job):
+    def on_find_node(self, job):
         pass
 
     @abstractmethod
-    def find_value(self, job):
+    def on_find_value(self, job):
         pass
 
-    def ping(self, job):
+    def on_ping(self, job):
         """
             On ping method, the client should respond with a pong message.
         """
 
-        node = Node(job["host"], job["port"], job["node_id"])
-        self.node.client.pong(node)
+        node = Node(job["sender"]["host"], job["sender"]["port"],
+                    job["sender"]["id"])
+        self.kademlia.pong(node)

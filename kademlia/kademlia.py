@@ -1,7 +1,6 @@
 import gc
 import asyncio
-
-import uvloop
+import threading
 
 from .node import Node
 from .networking import KademliaUDPServer, KademliaUDPClient
@@ -10,27 +9,17 @@ from .networking import KademliaUDPServer, KademliaUDPClient
 class Kademlia(object):
     def __init__(self, host, port, register_to=None, k=20):
         self.data = {}
+
         self.node = Node(host, port, k)
+        self.received_jobs = []
 
         self.receiver = KademliaUDPServer(self)
-        self.received_jobs = []
+        self.receiver.start()
+
         self.sender = KademliaUDPClient(self)
 
-        self._start(register_to)
-
-    def _start(self, register_to=None):
-        loop = uvloop.new_event_loop()
-        asyncio.set_event_loop(loop)
-
-        try:
-            self.receiver.start(loop)
-            self.sender.start(loop)
-
-            if regiter:
-                self.register(register_to)
-            loop.run_forever()
-        finally:
-            loop.close()
+        if register_to:
+            self.register(register_to)
 
     def register(self, gateway):
         pass
@@ -53,5 +42,8 @@ class Kademlia(object):
         for node in neighbors:
             self.sender('store', to=node)(key, value)
 
-    def ping(self, node):
-        self.sender.ping(node)
+    def ping(self, node, loop=None):
+        self.sender.ping(node, loop)
+
+    def pong(self, node, loop=None):
+        self.sender.pong(node, loop)

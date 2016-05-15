@@ -16,11 +16,12 @@ class Node(object):
     def __init__(self, host, port, bucket, node_id=None):
         self.host = host
         self.port = port
-        self.node_id = node_id or Node.generate_id()
+        self.id = node_id or Node.generate_id()
         self.bucket = bucket
 
     def __xor__(self, node):
-        return self.node_id ^ node.node_id
+        return self.id ^ node.id
 
+    @property
     def address(self):
-        return (self.host, self.port)
+        return (self.host, int(self.port))
